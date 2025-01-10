@@ -2,10 +2,18 @@ package org.poach3r
 
 import scala.annotation.tailrec
 
+import org.poach3r.builtins.*
 import org.poach3r.Expression.*
 import os.proc
+import org.poach3r.Main.wd
 
 object Interpreter extends Expression.Visitor[Any]:
+  private val builtins = Array[Builtin](
+    Exit,
+    Stringify,
+    Cd
+  )
+
   override def visitBinaryExpr(expr: Binary): Any =
     val left = expr.left.accept(this)
     val right = expr.right.accept(this)
@@ -63,32 +71,54 @@ object Interpreter extends Expression.Visitor[Any]:
   override def visitGroupingExpr(expr: Grouping): Any = expr.expr.accept(this)
   override def visitCommandExpr(expr: Command): Any =
     val args = expr.args.accept(this)
+    // this should only ever be a length of 0 or 1
+    val possibleBuiltins = builtins.filter(_.name == expr.command)
 
-    expr.command match
-      case "exit" => System.exit(0)
-      case _ =>
-        if args.isInstanceOf[ScalieNull] then
-          os.call(
-            cmd = expr.command,
-            stdin = os.Inherit,
-            stdout = os.Inherit,
-            stderr = os.Inherit
-          )
+    if possibleBuiltins.isEmpty then
+      // execute system command if no builtin was found
+      val command =
+        if args.isInstanceOf[ScalieNull] then (expr.command, Array[String]())
         else if args.isInstanceOf[Array[Any]] then
-          os.call(
-            cmd =
-              (expr.command, args.asInstanceOf[Array[Any]].map(_.toString())),
-            stdin = os.Inherit,
-            stdout = os.Inherit,
-            stderr = os.Inherit
-          )
-        else
-          os.call(
-            cmd = (expr.command, args.toString()),
-            stdin = os.Inherit,
-            stdout = os.Inherit,
-            stderr = os.Inherit
-          )
+          (expr.command, args.asInstanceOf[Array[Any]].map(_.toString()))
+        else (expr.command, Array(args.toString()))
+
+      if expr.silent then
+        os.call(
+          cmd = command,
+          cwd = wd,
+          stdin = os.Inherit,
+          stderr = os.Inherit
+        ).out
+          .lines()
+          .mkString(" ")
+      else
+        os.call(
+          cmd = command,
+          cwd = wd,
+          stdin = os.Inherit,
+          stdout = os.Inherit,
+          stderr = os.Inherit
+        ).exitCode
+    else // execute a builtin if it exists
+      possibleBuiltins.map { builtin =>
+        if args.isInstanceOf[Array[Any]] then
+          val arr = args.asInstanceOf[Array[Any]]
+          if arr.length != builtin.arity && builtin.arity != -1 then
+            arityError(builtin, arr.length)
+          builtin.execute(arr, expr.silent)
+        else if args.isInstanceOf[ScalieNull] then
+          if builtin.arity != 0 && builtin.arity != -1 then
+            arityError(builtin, 0)
+          else builtin.execute(Array(), expr.silent)
+        else if builtin.arity != 1 && builtin.arity != -1 then
+          arityError(builtin, 1)
+        else builtin.execute(Array(args), expr.silent)
+      }.head
 
   override def visitArrayExpr(expr: Arr): Any =
     expr.arr.map(_.accept(this))
+
+  private def arityError(builtin: Builtin, amt: Int): Unit =
+    throw RuntimeException(
+      s"Builtin '${builtin.name}' requires ${builtin.arity} arguments but found $amt."
+    )

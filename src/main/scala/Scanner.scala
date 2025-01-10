@@ -21,8 +21,7 @@ object Scanner:
       tokens: Array[Token] = Array()
   ): Array[Token] =
     if index == text.length() then
-      return tokens
-        .appended(Token(TokenType.Eof, None, index))
+      return tokens.appended(Token(TokenType.Eof, 0, index))
 
     val newTokenAndIndex = scanChar(text, tokens, index)
 
@@ -46,7 +45,6 @@ object Scanner:
       case '"' =>
         val str = getString(text, index + 1, '"')
         (Some(Token(TokenType.String, str, index)), index + 2 + str.length())
-      // case ';' => (Some(Token(TokenType.Semicolon, ';', index)), index + 1)
       case ';' => (None, index + 1)
       case '(' => (Some(Token(TokenType.LeftParen, '(', index)), index + 1)
       case ')' => (Some(Token(TokenType.RightParen, ')', index)), index + 1)
@@ -56,6 +54,8 @@ object Scanner:
       case '-' => (Some(Token(TokenType.Minus, '-', index)), index + 1)
       case '/' => (Some(Token(TokenType.Slash, '/', index)), index + 1)
       case '*' => (Some(Token(TokenType.Star, '*', index)), index + 1)
+      case '$' => (Some(Token(TokenType.Dollar, '$', index)), index + 1)
+      case '!' => (Some(Token(TokenType.Exclamation, '!', index)), index + 1)
       case '=' =>
         if isMatching(text, '=', tokens, index) then
           (Some(Token(TokenType.EqualEqual, "==", index)), index + 2)
@@ -77,7 +77,16 @@ object Scanner:
           )
         else
           val str = getIdentifier(text, index)
-          (Some(Token(TokenType.Command, str, index)), index + str.length())
+          (
+            Some(
+              Token(
+                TokenType.Command,
+                str.replaceAllLiterally("\\n", "\n"),
+                index
+              )
+            ),
+            index + str.length()
+          )
 
   private def isMatching(
       text: String,
@@ -120,7 +129,7 @@ object Scanner:
       endText: String = ""
   ): String =
     if index == text.length() then endText
-    else if (text(index) < '0' || text(index) > '9') && (text(
+    else if (text(index) < '*' || text(index) > '9') && (text(
         index
       ) < 'A' || text(index) > 'Z') && (text(index) < 'a' || text(index) > 'z')
     then endText

@@ -28,7 +28,7 @@ object Expression:
     override def accept[T](visitor: Visitor[T]): T =
       visitor.visitGroupingExpr(this)
 
-  case class Command(command: String, args: Expr) extends Expr:
+  case class Command(command: String, args: Expr, silent: Boolean) extends Expr:
     override def accept[T](visitor: Visitor[T]): T =
       visitor.visitCommandExpr(this)
 

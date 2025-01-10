@@ -91,14 +91,34 @@ object Parser:
 
   private def primary(
       tokens: Array[Token],
-      index: Int
+      index: Int,
+      commandSilenced: Boolean = false
   ): (Expression.Expr, Int) =
-    if isMatching(tokens(index), TokenType.Command) then
-      val arguments = equality(tokens, index + 1)
+    if isMatching(tokens(index), TokenType.Dollar) then
+      if index + 1 == tokens.length || !isMatching(
+          tokens(index + 1),
+          TokenType.Command
+        )
+      then throw RuntimeException(s"Expected command after '$$'. ($index)")
+
+      primary(tokens, index + 1, true)
+    else if isMatching(tokens(index), TokenType.Command) then
+      val arguments =
+        // if the command is the sole element in an array or group then
+        // we feed it a null value to prevent an out of bounds error
+        if isMatching(
+            tokens(index + 1),
+            TokenType.RightParen
+          ) || isMatching(tokens(index + 1), TokenType.RightBracket)
+        then
+          // if the index was iterated then the paren/bracket wouldnt be found
+          (Expression.Literal(ScalieNull()), index)
+        else equality(tokens, index + 1)
       (
         Expression.Command(
           tokens(index).literal.asInstanceOf[String],
-          arguments._1
+          arguments._1,
+          commandSilenced
         ),
         arguments._2 + 1
       )
@@ -108,10 +128,21 @@ object Parser:
     else if isMatching(tokens(index), TokenType.LeftParen) then
       val expr = equality(tokens, index + 1)
 
-      if isMatching(tokens(expr._2), TokenType.RightParen) then
-        throw RuntimeException("Expected ')' at end of grouping expression.")
+      if !isMatching(tokens(expr._2), TokenType.RightParen) then
+        throw RuntimeException(
+          s"Expected ')' at end of grouping expression. ($index)"
+        )
 
       (Expression.Grouping(expr._1), expr._2 + 1)
+    else if isMatching(
+        tokens(index),
+        TokenType.RightParen,
+        TokenType.RightBracket
+      )
+    then
+      throw RuntimeException(
+        s"Unexpected character '${tokens(index).literal}'. ($index)"
+      )
     else if isMatching(tokens(index), TokenType.Eof) then
       (Expression.Literal(ScalieNull()), index + 1)
     else (Expression.Literal(tokens(index).literal), index + 1)
@@ -127,7 +158,11 @@ object Parser:
       index: Int,
       exprs: Array[Expression.Expr] = Array()
   ): (Array[Expression.Expr], Int) =
-    if tokens.length <= index || isMatching(
+    if index == tokens.length then
+      throw RuntimeException(
+        s"Expected ']' after array expression but found nothing. ($index)"
+      )
+    if isMatching(
         tokens(index),
         TokenType.RightBracket
       )

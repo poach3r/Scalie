@@ -5,13 +5,19 @@ case class Token(lexeme: TokenType, literal: Any, pos: Int)
 enum TokenType:
   case LeftParen, RightParen
   case LeftBracket, RightBracket
+
   case Plus, Minus
-  case Slash, Star
+  case Slash, Star, Percent
+
   case DoubleQuote, Quote
   case Dot, Comma
-  case And, Or
   case Num, String, Command
+
+  case Exclamation, Dollar
+
+  case And, Or
   case Equal, EqualEqual
   case Less, LessEqual
   case Greater, GreaterEqual
+
   case Semicolon, Eof
