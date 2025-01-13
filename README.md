@@ -14,7 +14,7 @@ I've learned about functional programming.
 
 /home/poacher
 > echo "5 + 1 * 10"
-5 + 1 + 10
+5 + 1 * 10
 ```
 
 ```
