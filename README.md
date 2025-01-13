@@ -11,6 +11,10 @@ I've learned about functional programming.
 /home/poacher
 > echo 5 + 1 * 10
 15.0
+
+/home/poacher
+> echo "5 + 1 * 10"
+5 + 1 + 10
 ```
 
 ```
