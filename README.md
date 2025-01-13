@@ -2,6 +2,17 @@
 Scalie is simple Linux shell written in Scala for the purpose of applying what
 I've learned about functional programming.
 
+# Installation
+Requires `sbt` and `git`
+
+```
+git clone https://github.com/poach3r/Scalie
+cd ./Scalie
+sbt nativeLink
+```
+
+Note: The binary is created in Scalie/target/scala-3.6.2/
+
 # Examples
 ```
 /home/poacher
