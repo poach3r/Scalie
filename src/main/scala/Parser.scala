@@ -120,7 +120,7 @@ object Parser:
           arguments._1,
           commandSilenced
         ),
-        arguments._2 + 1
+        arguments._2
       )
     else if isMatching(tokens(index), TokenType.LeftBracket) then
       val exprs = getUntilRightBracket(tokens, index + 1)
