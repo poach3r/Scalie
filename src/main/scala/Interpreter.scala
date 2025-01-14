@@ -15,8 +15,8 @@ object Interpreter extends Expression.Visitor[Any]:
   )
 
   override def visitBinaryExpr(expr: Binary): Any =
-    val left = expr.left.accept(this)
-    val right = expr.right.accept(this)
+    lazy val left = expr.left.accept(this)
+    lazy val right = expr.right.accept(this)
 
     expr.operator.lexeme match
       case TokenType.Plus =>
@@ -60,6 +60,10 @@ object Interpreter extends Expression.Visitor[Any]:
         if left.isInstanceOf[Double] && right.isInstanceOf[Double] then
           left.asInstanceOf[Double] >= right.asInstanceOf[Double]
         else throw RuntimeException(s"Cannot compare '$left' and '$right'.")
+
+      case TokenType.And => isTruthy(left) && isTruthy(right)
+
+      case TokenType.Or => isTruthy(left) || isTruthy(right)
 
       case TokenType.EqualEqual => left == right
 
@@ -117,6 +121,14 @@ object Interpreter extends Expression.Visitor[Any]:
 
   override def visitArrayExpr(expr: Arr): Any =
     expr.arr.map(_.accept(this))
+
+  private def isTruthy(obj: Any): Boolean =
+    if obj.isInstanceOf[Boolean] then obj.asInstanceOf
+    else if obj.isInstanceOf[String] then
+      val str = obj.asInstanceOf[String]
+      if str == "true" then true
+      else false
+    else false
 
   private def arityError(builtin: Builtin, amt: Int): Unit =
     throw RuntimeException(

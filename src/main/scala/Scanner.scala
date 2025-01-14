@@ -56,6 +56,8 @@ object Scanner:
       case '*' => (Some(Token(TokenType.Star, '*', index)), index + 1)
       case '$' => (Some(Token(TokenType.Dollar, '$', index)), index + 1)
       case '!' => (Some(Token(TokenType.Exclamation, '!', index)), index + 1)
+      case '|' => (Some(Token(TokenType.Or, '|', index)), index + 1)
+      case '&' => (Some(Token(TokenType.And, '&', index)), index + 1)
       case '=' =>
         if isMatching(text, '=', tokens, index) then
           (Some(Token(TokenType.EqualEqual, "==", index)), index + 2)

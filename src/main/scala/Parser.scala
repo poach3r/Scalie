@@ -21,8 +21,24 @@ object Parser:
   ): Array[Expression.Expr] =
     if index >= tokens.length then return expressions
 
-    val result = equality(tokens, index)
+    val result = andOr(tokens, index)
     parse(tokens, result._2, expressions.appended(result._1))
+
+  private def andOr(
+      tokens: Array[Token],
+      index: Int
+  ): (Expression.Expr, Int) =
+    val expr = equality(tokens, index)
+
+    if expr._2 < tokens.length && isMatching(
+        tokens(expr._2),
+        TokenType.And,
+        TokenType.Or
+      )
+    then
+      val right = equality(tokens, expr._2 + 1)
+      (Expression.Binary(tokens(expr._2), expr._1, right._1), right._2)
+    else expr
 
   private def equality(
       tokens: Array[Token],
@@ -35,7 +51,7 @@ object Parser:
         TokenType.EqualEqual
       )
     then
-      val right = equality(tokens, expr._2 + 1)
+      val right = andOr(tokens, expr._2 + 1)
       (Expression.Binary(tokens(expr._2), expr._1, right._1), right._2)
     else expr
 
@@ -113,7 +129,7 @@ object Parser:
         then
           // if the index was iterated then the paren/bracket wouldnt be found
           (Expression.Literal(ScalieNull()), index)
-        else equality(tokens, index + 1)
+        else andOr(tokens, index + 1)
       (
         Expression.Command(
           tokens(index).literal.asInstanceOf[String],
@@ -126,7 +142,7 @@ object Parser:
       val exprs = getUntilRightBracket(tokens, index + 1)
       (Expression.Arr(exprs._1), exprs._2)
     else if isMatching(tokens(index), TokenType.LeftParen) then
-      val expr = equality(tokens, index + 1)
+      val expr = andOr(tokens, index + 1)
 
       if !isMatching(tokens(expr._2), TokenType.RightParen) then
         throw RuntimeException(
@@ -168,5 +184,5 @@ object Parser:
       )
     then return (exprs, index + 1)
 
-    val expr = equality(tokens, index)
+    val expr = andOr(tokens, index)
     getUntilRightBracket(tokens, expr._2, exprs.appended(expr._1))
