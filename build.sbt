@@ -10,6 +10,7 @@ lazy val root = (project in file("."))
   )
 
 libraryDependencies += "com.lihaoyi" %%% "os-lib" % "0.11.4-M3"
+libraryDependencies += "com.lihaoyi" %%% "mainargs" % "0.7.6"
 libraryDependencies ++= Seq(
   "io.circe" %%% "circe-core",
   "io.circe" %%% "circe-generic",
