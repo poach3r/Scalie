@@ -27,7 +27,7 @@ object Main:
     if printing then expressions.map(_.accept(Printer)).foreach(println)
     else expressions.map(_.accept(Interpreter))
     println()
-    runLoop()
+    runLoop(printing)
   catch
     case e: Exception =>
       e.printStackTrace()
