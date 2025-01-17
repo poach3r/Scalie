@@ -11,7 +11,9 @@ object Interpreter extends Expression.Visitor[Any]:
   private val builtins = Array[Builtin](
     Exit,
     Stringify,
-    Cd
+    Cd,
+    Truthy,
+    Numify
   )
 
   override def visitBinaryExpr(expr: Binary): Any =
@@ -19,53 +21,17 @@ object Interpreter extends Expression.Visitor[Any]:
     lazy val right = expr.right.accept(this)
 
     expr.operator.lexeme match
-      case TokenType.Plus =>
-        if left.isInstanceOf[String] && right.isInstanceOf[String] then
-          left.asInstanceOf[String].concat(right.asInstanceOf)
-        else if left.isInstanceOf[Double] && right.isInstanceOf[Double] then
-          left.asInstanceOf[Double] + right.asInstanceOf[Double]
-        else throw RuntimeException(s"Cannot add '$left' and '$right'.")
-
-      case TokenType.Minus =>
-        if left.isInstanceOf[Double] && right.isInstanceOf[Double] then
-          left.asInstanceOf[Double] - right.asInstanceOf[Double]
-        else throw RuntimeException(s"Cannot substract '$right' from '$left'.")
-
-      case TokenType.Slash =>
-        if left.isInstanceOf[Double] && right.isInstanceOf[Double] then
-          left.asInstanceOf[Double] / right.asInstanceOf[Double]
-        else throw RuntimeException(s"Cannot divide '$left' by '$right'.")
-
-      case TokenType.Star =>
-        if left.isInstanceOf[Double] && right.isInstanceOf[Double] then
-          left.asInstanceOf[Double] * right.asInstanceOf[Double]
-        else throw RuntimeException(s"Cannot multiply '$left' by '$right'.")
-
-      case TokenType.Less =>
-        if left.isInstanceOf[Double] && right.isInstanceOf[Double] then
-          left.asInstanceOf[Double] < right.asInstanceOf[Double]
-        else throw RuntimeException(s"Cannot compare '$left' and '$right'.")
-
-      case TokenType.LessEqual =>
-        if left.isInstanceOf[Double] && right.isInstanceOf[Double] then
-          left.asInstanceOf[Double] <= right.asInstanceOf[Double]
-        else throw RuntimeException(s"Cannot compare '$left' and '$right'.")
-
-      case TokenType.Greater =>
-        if left.isInstanceOf[Double] && right.isInstanceOf[Double] then
-          left.asInstanceOf[Double] > right.asInstanceOf[Double]
-        else throw RuntimeException(s"Cannot compare '$left' and '$right'.")
-
-      case TokenType.GreaterEqual =>
-        if left.isInstanceOf[Double] && right.isInstanceOf[Double] then
-          left.asInstanceOf[Double] >= right.asInstanceOf[Double]
-        else throw RuntimeException(s"Cannot compare '$left' and '$right'.")
-
-      case TokenType.And => isTruthy(left) && isTruthy(right)
-
-      case TokenType.Or => isTruthy(left) || isTruthy(right)
-
-      case TokenType.EqualEqual => left == right
+      case TokenType.Plus         => asNum(left) + asNum(right)
+      case TokenType.Minus        => asNum(left) - asNum(right)
+      case TokenType.Slash        => asNum(left) / asNum(right)
+      case TokenType.Star         => asNum(left) * asNum(right)
+      case TokenType.Less         => asNum(left) < asNum(right)
+      case TokenType.LessEqual    => asNum(left) <= asNum(right)
+      case TokenType.Greater      => asNum(left) > asNum(right)
+      case TokenType.GreaterEqual => asNum(left) >= asNum(right)
+      case TokenType.And          => asBool(left) && asBool(right)
+      case TokenType.Or           => asBool(left) || asBool(right)
+      case TokenType.EqualEqual   => left == right
 
       // unused, stops the compiler from warning about inexhaustive pattern matching
       case _ => 0
@@ -109,26 +75,32 @@ object Interpreter extends Expression.Visitor[Any]:
           val arr = args.asInstanceOf[Array[Any]]
           if arr.length != builtin.arity && builtin.arity != -1 then
             arityError(builtin, arr.length)
-          builtin.execute(arr, expr.silent)
+          else builtin.execute(arr, expr.silent)
         else if args.isInstanceOf[ScalieNull] then
           if builtin.arity != 0 && builtin.arity != -1 then
             arityError(builtin, 0)
           else builtin.execute(Array(), expr.silent)
-        else if builtin.arity != 1 && builtin.arity != -1 then
-          arityError(builtin, 1)
-        else builtin.execute(Array(args), expr.silent)
+        else
+          builtin.arity match
+            case 1  => builtin.execute(Array(args), expr.silent)
+            case -1 => builtin.execute(Array(args), expr.silent)
+            case 0  => arityError(builtin, 0)
       }.head
 
   override def visitArrayExpr(expr: Arr): Any =
     expr.arr.map(_.accept(this))
 
-  private def isTruthy(obj: Any): Boolean =
-    if obj.isInstanceOf[Boolean] then obj.asInstanceOf
-    else if obj.isInstanceOf[String] then
-      val str = obj.asInstanceOf[String]
-      if str == "true" then true
-      else false
-    else false
+  private def asString(obj: Any): String =
+    if obj.isInstanceOf[String] then obj.asInstanceOf[String]
+    else throw RuntimeException(s"Object '${obj.toString}' is not a boolean.")
+
+  private def asNum(obj: Any): Double =
+    if obj.isInstanceOf[Double] then obj.asInstanceOf[Double]
+    else throw RuntimeException(s"Object '${obj.toString}' is not a boolean.")
+
+  private def asBool(obj: Any): Boolean =
+    if obj.isInstanceOf[Boolean] then obj.asInstanceOf[Boolean]
+    else throw RuntimeException(s"Object '${obj.toString}' is not a boolean.")
 
   private def arityError(builtin: Builtin, amt: Int): Unit =
     throw RuntimeException(
